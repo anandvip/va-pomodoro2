@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus Flow - Learning Pomodoro</title>
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --secondary-color: #f093fb;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-secondary: rgba(255, 255, 255, 0.95);
+            --text-primary: #333;
+            --text-secondary: #666;
+            --border-color: #e5e7eb;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            --bg-secondary: rgba(30, 30, 30, 0.95);
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --border-color: #404040;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .top-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .control-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .container {
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .auth-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            border-radius: 10px;
+        }
+
+        .auth-section.signed-in {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: var(--primary-color);
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.1em;
+        }
+
+        .timer-display {
+            font-size: 4em;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 30px 0;
+            font-family: 'Courier New', monospace;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .session-info {
+            background: linear-gradient(135deg, var(--secondary-color) 0%, #f5576c 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 100px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--warning-color) 0%, #d97706 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger-color) 0%, #dc2626 100%);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress-ring {
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+        }
+
+        .progress-ring__circle {
+            stroke: var(--border-color);
+            stroke-width: 8;
+            fill: transparent;
+            transition: stroke-dasharray 1s ease;
+        }
+
+        .progress-ring__progress {
+            stroke: var(--primary-color);
+            stroke-width: 8;
+            fill: transparent;
+            stroke-linecap: round;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: var(--bg-secondary);
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal h2 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1em;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .formatting-toolbar {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+            padding: 5px;
+            background: var(--border-color);
+            border-radius: 5px;
+        }
+
+        .format-btn {
+            padding: 5px 10px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 3px;
+            font-weight: bold;
+            color: var(--text-primary);
+            transition: background-color 0.2s ease;
+        }
+
+        .format-btn:hover, .format-btn.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .close {
+            color: var(--text-secondary);
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close:hover {
+            color: var(--danger-color);
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 350px;
+            height: 100vh;
+            background: var(--bg-secondary);
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.2);
+            transition: right 0.3s ease;
+            z-index: 999;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .settings-panel.open {
+            right: 0;
+        }
+
+        .settings-panel h3 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .setting-group {
+            margin-bottom: 20px;
+        }
+
+        .setting-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .setting-group input {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1em;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        /* Learning History */
+        .history-section {
+            margin-top: 30px;
+            background: var(--bg-secondary);
+            border-radius: 15px;
+            padding: 20px;
+        }
+
+        .history-item {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        [data-theme="dark"] .history-item {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .history-topic {
+            font-weight: bold;
+            color: var(--primary-color);
+            font-size: 1.1em;
+        }
+
+        .history-date {
+            font-size: 0.8em;
+            color: var(--text-secondary);
+        }
+
+        .history-content {
+            color: var(--text-primary);
+            line-height: 1.5;
+            cursor: pointer;
+        }
+
+        .history-content[contenteditable="true"] {
+            background: rgba(255, 255, 255, 0.5);
+            padding: 8px;
+            border-radius: 5px;
+            border: 2px dashed var(--primary-color);
+        }
+
+        .notification-status {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 0.9em;
+        }
+
+        .notification-status.granted {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .notification-status.denied {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            .timer-display {
+                font-size: 3em;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 200px;
+            }
+
+            .settings-panel {
+                width: 100%;
+                right: -100%;
+            }
+
+            .modal-content {
+                margin: 10% auto;
+                width: 95%;
+            }
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <div class="top-controls">
+        <button class="control-btn" id="themeToggle" title="Toggle Theme">🌙</button>
+        <button class="control-btn" id="settingsToggle" title="Settings">⚙️</button>
+        <button class="control-btn" id="historyToggle" title="Learning History">📚</button>
+    </div>
+
+    <div class="settings-panel" id="settingsPanel">
+        <h3>⚙️ Timer Settings</h3>
+        <div class="setting-group">
+            <label for="workMinutes">Work Session (minutes):</label>
+            <input type="number" id="workMinutes" min="1" max="60" value="25">
+        </div>
+        <div class="setting-group">
+            <label for="shortBreak">Short Break (minutes):</label>
+            <input type="number" id="shortBreak" min="1" max="30" value="5">
+        </div>
+        <div class="setting-group">
+            <label for="longBreak">Long Break (minutes):</label>
+            <input type="number" id="longBreak" min="1" max="60" value="15">
+        </div>
+        
+        <h3>🔔 Notifications</h3>
+        <div class="notification-status" id="notificationStatus">
+            <span id="notificationText">🔔 Click to enable notifications</span>
+            <button class="btn btn-secondary" id="enableNotifications" style="margin-top: 10px; padding: 5px 10px; font-size: 0.9em;">Enable</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="auth-section" id="authSection">
+            <div id="signedOutView">
+                <p>📚 Sign in to save your learning journey!</p>
+                <button class="btn btn-primary" id="signInBtn">Sign in with Google</button>
+            </div>
+            <div id="signedInView" style="display: none;">
+                <p>Welcome back, <span id="userName"></span>! 🎉</p>
+                <button class="btn btn-secondary" id="signOutBtn">Sign Out</button>
+            </div>
+        </div>
+
+        <div class="header">
+            <h1>🍅 Focus Flow</h1>
+            <p>Learn more with the Pomodoro Technique</p>
+        </div>
+
+        <svg class="progress-ring" width="200" height="200">
+            <circle class="progress-ring__circle" cx="100" cy="100" r="90"></circle>
+            <circle class="progress-ring__progress" cx="100" cy="100" r="90" id="progressCircle"></circle>
+        </svg>
+
+        <div class="timer-display" id="timerDisplay">25:00</div>
+        
+        <div class="session-info" id="sessionInfo">
+            Ready to learn! Start your first focused session.
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" id="startBtn">▶️ Start Learning</button>
+            <button class="btn btn-secondary" id="pauseBtn" disabled>⏸️ Pause</button>
+            <button class="btn btn-danger" id="resetBtn">🔄 Reset</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="completedSessions">0</div>
+                <div class="stat-label">Completed Sessions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalBreaks">0</div>
+                <div class="stat-label">Total Breaks</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="focusTime">0</div>
+                <div class="stat-label">Focus Time (hrs)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Topic Input Modal -->
+    <div id="topicModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="topicModalClose">&times;</span>
+            <h2>🎯 What are you learning today?</h2>
+            <div class="form-group">
+                <label for="topicInput">Learning Topic:</label>
+                <input type="text" id="topicInput" placeholder="e.g., JavaScript Promises, Spanish Vocabulary, etc." required>
+            </div>
+            <div class="form-group">
+                <label for="topicDescription">Description (optional):</label>
+                <textarea id="topicDescription" placeholder="What specifically do you want to focus on?" rows="3"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelTopic">Cancel</button>
+                <button class="btn btn-primary" id="startSession">Start Learning!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Learning Capture Modal -->
+    <div id="learningModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="learningModalClose">&times;</span>
+            <h2>📝 What did you learn?</h2>
+            <p><strong>Topic:</strong> <span id="currentTopic"></span></p>
+            <div class="form-group">
+                <label for="learningNotes">Learning Notes:</label>
+                <div class="formatting-toolbar">
+                    <button class="format-btn" data-command="bold" title="Bold"><strong>B</strong></button>
+                    <button class="format-btn" data-command="italic" title="Italic"><em>I</em></button>
+                    <button class="format-btn" data-command="underline" title="Underline"><u>U</u></button>
+                </div>
+                <textarea id="learningNotes" placeholder="Write down what you learned, key insights, questions that came up..." rows="6"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="skipNotes">Skip</button>
+                <button class="btn btn-primary" id="saveNotes">Save & Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Learning History Modal -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="historyModalClose">&times;</span>
+            <h2>📚 Your Learning Journey</h2>
+            <div id="historyContainer">
+                <p>No learning sessions yet. Start your first session to see your progress here!</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase Configuration
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, query, orderBy, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBJBol-impIqgGOiuFEcCQBEcgaDBBu2RY",
+            authDomain: "pomodoro-3630d.firebaseapp.com",
+            projectId: "pomodoro-3630d",
+            storageBucket: "pomodoro-3630d.firebasestorage.app",
+            messagingSenderId: "715245797764",
+            appId: "1:715245797764:web:bcc0dce863005a650cddd1",
+            measurementId: "G-HS8NXV006M"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        class LearningPomodoroTimer {
+            constructor() {
+                this.isRunning = false;
+                this.isPaused = false;
+                this.currentSession = 'work';
+                this.timeLeft = 25 * 60;
+                this.totalTime = 25 * 60;
+                this.completedSessions = parseInt(localStorage.getItem('completedSessions') || '0');
+                this.totalBreaks = parseInt(localStorage.getItem('totalBreaks') || '0');
+                this.focusTimeHours = parseFloat(localStorage.getItem('focusTimeHours') || '0');
+                this.timer = null;
+                this.sessionCount = 0;
+                this.currentTopic = '';
+                this.currentTopicDescription = '';
+                this.user = null;
+                this.learningHistory = [];
+
+                this.initializeElements();
+                this.updateDisplay();
+                this.updateStats();
+                this.checkNotificationPermission();
+                this.setupEventListeners();
+                this.initializeProgressRing();
+                this.loadTheme();
+                this.setupFirebaseAuth();
+            }
+
+            initializeElements() {
+                this.timerDisplay = document.getElementById('timerDisplay');
+                this.sessionInfo = document.getElementById('sessionInfo');
+                this.startBtn = document.getElementById('startBtn');
+                this.pauseBtn = document.getElementById('pauseBtn');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.workMinutesInput = document.getElementById('workMinutes');
+                this.shortBreakInput = document.getElementById('shortBreak');
+                this.longBreakInput = document.getElementById('longBreak');
+                this.notificationStatus = document.getElementById('notificationStatus');
+                this.notificationText = document.getElementById('notificationText');
+                this.enableNotificationsBtn = document.getElementById('enableNotifications');
+                this.progressCircle = document.getElementById('progressCircle');
+                this.completedSessionsEl = document.getElementById('completedSessions');
+                this.totalBreaksEl = document.getElementById('totalBreaks');
+                this.focusTimeEl = document.getElementById('focusTime');
+                
+                // New elements
+                this.themeToggle = document.getElementById('themeToggle');
+                this.settingsToggle = document.getElementById('settingsToggle');
+                this.historyToggle = document.getElementById('historyToggle');
+                this.settingsPanel = document.getElementById('settingsPanel');
+                this.topicModal = document.getElementById('topicModal');
+                this.learningModal = document.getElementById('learningModal');
+                this.historyModal = document.getElementById('historyModal');
+                this.topicInput = document.getElementById('topicInput');
+                this.topicDescription = document.getElementById('topicDescription');
+                this.learningNotes = document.getElementById('learningNotes');
+                this.currentTopicEl = document.getElementById('currentTopic');
+                this.historyContainer = document.getElementById('historyContainer');
+                
+                // Auth elements
+                this.authSection = document.getElementById('authSection');
+                this.signedOutView = document.getElementById('signedOutView');
+                this.signedInView = document.getElementById('signedInView');
+                this.userName = document.getElementById('userName');
+                this.signInBtn = document.getElementById('signInBtn');
+                this.signOutBtn = document.getElementById('signOutBtn');
+            }
+
+            setupFirebaseAuth() {
+                onAuthStateChanged(auth, (user) => {
+                    this.user = user;
+                    if (user) {
+                        this.userName.textContent = user.displayName || user.email;
+                        this.signedOutView.style.display = 'none';
+                        this.signedInView.style.display = 'block';
+                        this.authSection.classList.add('signed-in');
+                        this.loadLearningHistory();
+                    } else {
+                        this.signedOutView.style.display = 'block';
+                        this.signedInView.style.display = 'none';
+                        this.authSection.classList.remove('signed-in');
+                    }
+                });
+
+                this.signInBtn.addEventListener('click', async () => {
+                    try {
+                        await signInWithPopup(auth, provider);
+                    } catch (error) {
+                        console.error('Sign in error:', error);
+                        alert('Sign in failed. Please try again.');
+                    }
+                });
+
+                this.signOutBtn.addEventListener('click', async () => {
+                    try {
+                        await signOut(auth);
+                    } catch (error) {
+                        console.error('Sign out error:', error);
+                    }
+                });
+            }
+
+            initializeProgressRing() {
+                const radius = this.progressCircle.r.baseVal.value;
+                const circumference = radius * 2 * Math.PI;
+                this.progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
+                this.progressCircle.style.strokeDashoffset = circumference;
+                this.circumference = circumference;
+            }
+
+            updateProgressRing(timeLeft, totalTime) {
+                const progress = (totalTime - timeLeft) / totalTime;
+                const offset = this.circumference - progress * this.circumference;
+                this.progressCircle.style.strokeDashoffset = offset;
+            }
+
+            setupEventListeners() {
+                this.startBtn.addEventListener('click', () => this.handleStart());
+                this.pauseBtn.addEventListener('click', () => this.pause());
+                this.resetBtn.addEventListener('click', () => this.reset());
+                this.enableNotificationsBtn.addEventListener('click', () => this.requestNotificationPermission());
+
+                // Theme toggle
+                this.themeToggle.addEventListener('click', () => this.toggleTheme());
+
+                // Settings panel
+                this.settingsToggle.addEventListener('click', () => this.toggleSettings());
+
+                // History toggle
+                this.historyToggle.addEventListener('click', () => this.showHistory());
+
+                // Modal handlers
+                this.setupModalHandlers();
+
+                // Formatting toolbar
+                this.setupFormattingToolbar();
+
+                // Update timer when settings change
+                [this.workMinutesInput, this.shortBreakInput, this.longBreakInput].forEach(input => {
+                    input.addEventListener('change', () => {
+                        if (!this.isRunning) {
+                            this.reset();
+                        }
+                    });
+                });
+
+                // Close settings panel when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!this.settingsPanel.contains(e.target) && !this.settingsToggle.contains(e.target)) {
+                        this.settingsPanel.classList.remove('open');
+                    }
+                });
+            }
+
+            setupModalHandlers() {
+                // Topic modal
+                document.getElementById('topicModalClose').addEventListener('click', () => {
+                    this.topicModal.style.display = 'none';
+                });
+                
+                document.getElementById('cancelTopic').addEventListener('click', () => {
+                    this.topicModal.style.display = 'none';
+                });
+                
+                document.getElementById('startSession').addEventListener('click', () => {
+                    if (this.topicInput.value.trim()) {
+                        this.currentTopic = this.topicInput.value.trim();
+                        this.currentTopicDescription = this.topicDescription.value.trim();
+                        this.topicModal.style.display = 'none';
+                        this.start();
+                    } else {
+                        alert('Please enter a learning topic!');
+                    }
+                });
+
+                // Learning modal
+                document.getElementById('learningModalClose').addEventListener('click', () => {
+                    this.learningModal.style.display = 'none';
+                });
+                
+                document.getElementById('skipNotes').addEventListener('click', () => {
+                    this.learningModal.style.display = 'none';
+                    this.continueAfterBreak();
+                });
+                
+                document.getElementById('saveNotes').addEventListener('click', () => {
+                    this.saveLearningNotes();
+                    this.learningModal.style.display = 'none';
+                    this.continueAfterBreak();
+                });
+
+                // History modal
+                document.getElementById('historyModalClose').addEventListener('click', () => {
+                    this.historyModal.style.display = 'none';
+                });
+
+                // Close modals when clicking outside
+                window.addEventListener('click', (event) => {
+                    if (event.target.classList.contains('modal')) {
+                        event.target.style.display = 'none';
+                    }
+                });
+            }
+
+            setupFormattingToolbar() {
+                const formatButtons = document.querySelectorAll('.format-btn');
+                formatButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const command = btn.dataset.command;
+                        this.applyFormatting(command);
+                    });
+                });
+            }
+
+            applyFormatting(command) {
+                const textarea = this.learningNotes;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const selectedText = textarea.value.substring(start, end);
+                
+                if (selectedText) {
+                    let formattedText;
+                    switch (command) {
+                        case 'bold':
+                            formattedText = `**${selectedText}**`;
+                            break;
+                        case 'italic':
+                            formattedText = `*${selectedText}*`;
+                            break;
+                        case 'underline':
+                            formattedText = `__${selectedText}__`;
+                            break;
+                        default:
+                            formattedText = selectedText;
+                    }
+                    
+                    textarea.value = textarea.value.substring(0, start) + formattedText + textarea.value.substring(end);
+                    textarea.focus();
+                    textarea.setSelectionRange(start, start + formattedText.length);
+                }
+            }
+
+            toggleTheme() {
+                const currentTheme = document.body.getAttribute('data-theme');
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                document.body.setAttribute('data-theme', newTheme);
+                this.themeToggle.textContent = newTheme === 'light' ? '🌙' : '☀️';
+                localStorage.setItem('theme', newTheme);
+            }
+
+            loadTheme() {
+                const savedTheme = localStorage.getItem('theme') || 'light';
+                document.body.setAttribute('data-theme', savedTheme);
+                this.themeToggle.textContent = savedTheme === 'light' ? '🌙' : '☀️';
+            }
+
+            toggleSettings() {
+                this.settingsPanel.classList.toggle('open');
+            }
+
+            handleStart() {
+                if (this.currentSession === 'work' && !this.currentTopic) {
+                    this.showTopicModal();
+                } else {
+                    this.start();
+                }
+            }
+
+            showTopicModal() {
+                this.topicInput.value = '';
+                this.topicDescription.value = '';
+                this.topicModal.style.display = 'block';
+                this.topicInput.focus();
+            }
+
+            showLearningModal() {
+                this.currentTopicEl.textContent = this.currentTopic;
+                this.learningNotes.value = '';
+                this.learningModal.style.display = 'block';
+                this.learningNotes.focus();
+            }
+
+            async showHistory() {
+                await this.loadLearningHistory();
+                this.renderHistory();
+                this.historyModal.style.display = 'block';
+            }
+
+            start() {
+                if (this.isPaused) {
+                    this.isPaused = false;
+                } else {
+                    this.timeLeft = this.getTotalTime();
+                    this.totalTime = this.timeLeft;
+                }
+
+                this.isRunning = true;
+                this.startBtn.disabled = true;
+                this.pauseBtn.disabled = false;
+
+                this.updateSessionInfo();
+                
+                this.timer = setInterval(() => {
+                    this.timeLeft--;
+                    this.updateDisplay();
+                    this.updateProgressRing(this.timeLeft, this.totalTime);
+
+                    if (this.timeLeft <= 0) {
+                        this.completeSession();
+                    }
+                }, 1000);
+            }
+
+            pause() {
+                this.isRunning = false;
+                this.isPaused = true;
+                clearInterval(this.timer);
+                
+                this.startBtn.disabled = false;
+                this.pauseBtn.disabled = true;
+                
+                this.sessionInfo.textContent = '⏸️ Timer paused. Click Start to continue.';
+            }
+
+            reset() {
+                this.isRunning = false;
+                this.isPaused = false;
+                this.currentTopic = '';
+                this.currentTopicDescription = '';
+                clearInterval(this.timer);
+                
+                this.timeLeft = this.getTotalTime();
+                this.totalTime = this.timeLeft;
+                
+                this.startBtn.disabled = false;
+                this.pauseBtn.disabled = true;
+                
+                this.updateDisplay();
+                this.updateProgressRing(this.timeLeft, this.totalTime);
+                this.sessionInfo.textContent = `Ready to ${this.currentSession === 'work' ? 'learn' : 'take a break'}! Click Start to begin.`;
+            }
+
+            completeSession() {
+                this.isRunning = false;
+                clearInterval(this.timer);
+                
+                this.startBtn.disabled = false;
+                this.pauseBtn.disabled = true;
+
+                // Update statistics
+                if (this.currentSession === 'work') {
+                    this.completedSessions++;
+                    this.sessionCount++;
+                    this.focusTimeHours += this.getTotalTime() / 3600;
+                    localStorage.setItem('completedSessions', this.completedSessions.toString());
+                    localStorage.setItem('focusTimeHours', this.focusTimeHours.toString());
+                    
+                    // Show learning capture modal for work sessions
+                    this.showLearningModal();
+                } else {
+                    this.totalBreaks++;
+                    localStorage.setItem('totalBreaks', this.totalBreaks.toString());
+                    this.continueAfterBreak();
+                }
+
+                this.updateStats();
+                this.sendNotification();
+                this.playNotificationSound();
+            }
+
+            continueAfterBreak() {
+                // Determine next session
+                this.determineNextSession();
+                
+                // Reset timer for next session
+                this.timeLeft = this.getTotalTime();
+                this.totalTime = this.timeLeft;
+                this.updateDisplay();
+                this.updateProgressRing(this.timeLeft, this.totalTime);
+                this.updateSessionInfo();
+                
+                // Clear current topic after break
+                if (this.currentSession === 'work') {
+                    this.currentTopic = '';
+                    this.currentTopicDescription = '';
+                }
+            }
+
+            async saveLearningNotes() {
+                const notes = this.learningNotes.value.trim();
+                if (!notes) return;
+
+                const learningEntry = {
+                    topic: this.currentTopic,
+                    description: this.currentTopicDescription,
+                    notes: notes,
+                    timestamp: new Date(),
+                    userId: this.user?.uid || 'anonymous'
+                };
+
+                if (this.user) {
+                    try {
+                        await addDoc(collection(db, 'learningEntries'), learningEntry);
+                        console.log('Learning entry saved to Firebase');
+                    } catch (error) {
+                        console.error('Error saving to Firebase:', error);
+                        // Fallback to localStorage
+                        this.saveToLocalStorage(learningEntry);
+                    }
+                } else {
+                    this.saveToLocalStorage(learningEntry);
+                }
+            }
+
+            saveToLocalStorage(entry) {
+                const history = JSON.parse(localStorage.getItem('learningHistory') || '[]');
+                history.unshift(entry);
+                localStorage.setItem('learningHistory', JSON.stringify(history.slice(0, 50))); // Keep last 50 entries
+            }
+
+            async loadLearningHistory() {
+                if (this.user) {
+                    try {
+                        const q = query(
+                            collection(db, 'learningEntries'),
+                            where('userId', '==', this.user.uid),
+                            orderBy('timestamp', 'desc')
+                        );
+                        const querySnapshot = await getDocs(q);
+                        this.learningHistory = querySnapshot.docs.map(doc => ({
+                            id: doc.id,
+                            ...doc.data()
+                        }));
+                    } catch (error) {
+                        console.error('Error loading from Firebase:', error);
+                        this.learningHistory = JSON.parse(localStorage.getItem('learningHistory') || '[]');
+                    }
+                } else {
+                    this.learningHistory = JSON.parse(localStorage.getItem('learningHistory') || '[]');
+                }
+            }
+
+            renderHistory() {
+                if (this.learningHistory.length === 0) {
+                    this.historyContainer.innerHTML = '<p>No learning sessions yet. Start your first session to see your progress here!</p>';
+                    return;
+                }
+
+                const historyHTML = this.learningHistory.map(entry => {
+                    const date = new Date(entry.timestamp.seconds ? entry.timestamp.seconds * 1000 : entry.timestamp);
+                    return `
+                        <div class="history-item">
+                            <div class="history-header">
+                                <div class="history-topic">${entry.topic}</div>
+                                <div class="history-date">${date.toLocaleDateString()} ${date.toLocaleTimeString()}</div>
+                            </div>
+                            <div class="history-content" 
+                                 contenteditable="false" 
+                                 data-id="${entry.id || ''}"
+                                 onclick="this.contentEditable=true; this.focus();"
+                                 onblur="this.contentEditable=false; window.pomodoroTimer.updateHistoryEntry(this);">${entry.notes}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                this.historyContainer.innerHTML = historyHTML;
+            }
+
+            async updateHistoryEntry(element) {
+                const entryId = element.dataset.id;
+                const newContent = element.textContent.trim();
+                
+                if (!newContent) return;
+
+                if (this.user && entryId) {
+                    try {
+                        await updateDoc(doc(db, 'learningEntries', entryId), {
+                            notes: newContent
+                        });
+                        console.log('Learning entry updated in Firebase');
+                    } catch (error) {
+                        console.error('Error updating Firebase:', error);
+                    }
+                }
+
+                // Update local storage as backup
+                const history = JSON.parse(localStorage.getItem('learningHistory') || '[]');
+                const index = history.findIndex(entry => entry.id === entryId);
+                if (index >= 0) {
+                    history[index].notes = newContent;
+                    localStorage.setItem('learningHistory', JSON.stringify(history));
+                }
+            }
+
+            determineNextSession() {
+                if (this.currentSession === 'work') {
+                    this.currentSession = (this.sessionCount % 4 === 0) ? 'longBreak' : 'shortBreak';
+                } else {
+                    this.currentSession = 'work';
+                }
+            }
+
+            getTotalTime() {
+                switch (this.currentSession) {
+                    case 'work':
+                        return parseInt(this.workMinutesInput.value) * 60;
+                    case 'shortBreak':
+                        return parseInt(this.shortBreakInput.value) * 60;
+                    case 'longBreak':
+                        return parseInt(this.longBreakInput.value) * 60;
+                    default:
+                        return 25 * 60;
+                }
+            }
+
+            updateDisplay() {
+                const minutes = Math.floor(this.timeLeft / 60);
+                const seconds = this.timeLeft % 60;
+                this.timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                const sessionType = this.currentSession === 'work' ? '🍅 Learning' : '☕ Break';
+                document.title = `${sessionType} - ${this.timerDisplay.textContent} - Focus Flow`;
+            }
+
+            updateSessionInfo() {
+                const messages = {
+                    work: `🍅 Learning Session${this.currentTopic ? ': ' + this.currentTopic : ''} - Time to focus and learn!`,
+                    shortBreak: '☕ Short Break - Reflect on what you learned and recharge.',
+                    longBreak: '🎯 Long Break - Great job! Review your notes and enjoy a longer break.'
+                };
+                
+                this.sessionInfo.textContent = messages[this.currentSession];
+            }
+
+            updateStats() {
+                this.completedSessionsEl.textContent = this.completedSessions;
+                this.totalBreaksEl.textContent = this.totalBreaks;
+                this.focusTimeEl.textContent = this.focusTimeHours.toFixed(1);
+            }
+
+            async checkNotificationPermission() {
+                if (!('Notification' in window)) {
+                    this.notificationText.textContent = '❌ Notifications not supported in this browser';
+                    this.enableNotificationsBtn.style.display = 'none';
+                    return;
+                }
+
+                const permission = Notification.permission;
+                this.updateNotificationStatus(permission);
+            }
+
+            updateNotificationStatus(permission) {
+                const statusEl = this.notificationStatus;
+                const textEl = this.notificationText;
+                const btnEl = this.enableNotificationsBtn;
+
+                switch (permission) {
+                    case 'granted':
+                        statusEl.className = 'notification-status granted';
+                        textEl.textContent = '✅ Notifications enabled';
+                        btnEl.style.display = 'none';
+                        break;
+                    case 'denied':
+                        statusEl.className = 'notification-status denied';
+                        textEl.textContent = '❌ Notifications blocked';
+                        btnEl.style.display = 'none';
+                        break;
+                    default:
+                        statusEl.className = 'notification-status';
+                        textEl.textContent = '🔔 Click to enable notifications';
+                        btnEl.style.display = 'inline-block';
+                }
+            }
+
+            async requestNotificationPermission() {
+                try {
+                    const permission = await Notification.requestPermission();
+                    this.updateNotificationStatus(permission);
+                } catch (error) {
+                    console.error('Error requesting notification permission:', error);
+                }
+            }
+
+            sendNotification() {
+                if (Notification.permission === 'granted') {
+                    const titles = {
+                        work: '🎉 Learning Session Complete!',
+                        shortBreak: '🔄 Break Time Over!',
+                        longBreak: '🚀 Long Break Complete!'
+                    };
+
+                    const messages = {
+                        work: 'Great job! Time to reflect on what you learned.',
+                        shortBreak: 'Break\'s over! Ready for another learning session?',
+                        longBreak: 'Refreshed and ready! Let\'s tackle the next topic.'
+                    };
+
+                    const notification = new Notification(titles[this.currentSession] || 'Session Complete!', {
+                        body: messages[this.currentSession] || 'Your timer session is finished.',
+                        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🍅</text></svg>',
+                        tag: 'pomodoro-timer',
+                        requireInteraction: true
+                    });
+
+                    setTimeout(() => notification.close(), 5000);
+
+                    notification.onclick = () => {
+                        window.focus();
+                        notification.close();
+                    };
+                }
+            }
+
+            playNotificationSound() {
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                    oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+                    oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                } catch (error) {
+                    console.log('Audio notification not available:', error);
+                }
+            }
+        }
+
+        // Initialize the timer when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.pomodoroTimer = new LearningPomodoroTimer();
+        });
+    </script>
+</body>
+</html>
+
+<!-- 
+Date created: June 13, 2025
+Tool name: Claude Sonnet 4
+Prompt used to generate the code: "timer settings gear shall appear on top right corner of the application . and in the flow of start button event popup a modal capturing topic of the subject user is about start for leaning in this session. during break start readily popup a modal that allows user to capture the learned about the topic or subject in context given earlier by user. this reinforces reviewing the learning points in text area with basic formatting options bold italics, underline shows up on top edge of the text area box. neatly. application does offer theme switching. light or dark as per user preference. history of the learning is visible to user and is editable in place and saves the editing done by user on blur event. each topic or relevant progress shows under that topic with date and time stamp for later review and recall what they learned in the past. if you suggest firebase firestore with sign-in with google can make app personalized learning spree and can help retain the learning journey."
+
+
+This application transforms the traditional Pomodoro technique into a comprehensive learning management system, making every focus session a documented step in your educational journey.
+-->
